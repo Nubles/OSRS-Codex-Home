@@ -5,8 +5,10 @@ import com.codex.home.core.Advice;
 import com.codex.home.core.App;
 import com.codex.home.core.Format;
 import com.codex.home.core.Roster;
+import com.codex.home.core.Sailing;
 import com.codex.home.core.Shared;
 import com.codex.home.core.Status;
+import com.codex.home.core.Watch;
 import com.codex.home.ui.Actions;
 import com.codex.home.ui.HomePanel;
 import com.codex.home.ui.Sigil;
@@ -27,8 +29,10 @@ import javax.swing.SwingUtilities;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.Skill;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatColorType;
@@ -102,6 +106,8 @@ public class CodexHomePlugin extends Plugin
 
 	private volatile Account account = Account.UNKNOWN;
 	private volatile boolean loggedIn;
+	/** Sailing as last read from the game, or null while logged out. */
+	private volatile Sailing sailing;
 	private int loginTicks = -1;
 
 	@Provides
@@ -143,6 +149,7 @@ public class CodexHomePlugin extends Plugin
 		account = Account.UNKNOWN;
 		loggedIn = false;
 		loginTicks = -1;
+		sailing = null;
 	}
 
 	// ---- Events ----
@@ -164,6 +171,7 @@ public class CodexHomePlugin extends Plugin
 			loggedIn = false;
 			loginTicks = -1;
 			account = Account.UNKNOWN;
+			sailing = null;
 			refresh();
 		}
 	}
@@ -179,6 +187,10 @@ public class CodexHomePlugin extends Plugin
 			{
 				refresh();
 			}
+		}
+		if (readSailing())
+		{
+			refresh();
 		}
 		if (loginTicks >= 0 && ++loginTicks >= LOGIN_LINE_TICKS)
 		{
@@ -242,6 +254,22 @@ public class CodexHomePlugin extends Plugin
 		account = Account.of(client.getVarbitValue(VarbitID.IRONMAN));
 	}
 
+	/** On the client thread: reads Sailing and answers whether it changed. A few reads a tick. */
+	private boolean readSailing()
+	{
+		if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null)
+		{
+			return false;
+		}
+		Sailing now = new Sailing(client.getRealSkillLevel(Skill.SAILING), client.getSkillExperience(Skill.SAILING),
+			client.getVarpValue(VarPlayerID.PORT_TASKS_COMPLETED));
+		Sailing was = sailing;
+		sailing = now;
+		// Redraw on a level, a port task or a whole percent, not on every drop of experience.
+		return was == null || was.level != now.level || was.portTasks != now.portTasks
+			|| (int) (was.progress() * 100) != (int) (now.progress() * 100);
+	}
+
 	private Roster roster()
 	{
 		Map<App, Roster.State> states = new EnumMap<>(App.class);
@@ -292,14 +320,17 @@ public class CodexHomePlugin extends Plugin
 		Account acct = account;
 		List<Advice.Step> steps = Advice.start(roster, shared);
 		List<Advice.Pick> picks = config.picks() ? Advice.picks(roster, acct) : Collections.emptyList();
-		return new View(loggedIn, acct, roster, shared, steps, picks, config.startHere(), System.currentTimeMillis());
+		long now = System.currentTimeMillis();
+		List<Watch.Item> watch = config.watch() && loggedIn ? Watch.of(shared, config.sailing() ? sailing : null, now)
+			: Collections.emptyList();
+		return new View(loggedIn, acct, roster, shared, steps, picks, config.startHere(), now, watch);
 	}
 
 	/** The one line at login: the next step and how worth moved, from what the other apps share. */
 	private void sayHello()
 	{
 		Shared s = shared();
-		String line = hello(s);
+		String line = hello(s, config.watchLogin() ? Watch.reminder(Watch.of(s, null, System.currentTimeMillis())) : null);
 		if (line == null)
 		{
 			return;
@@ -317,6 +348,12 @@ public class CodexHomePlugin extends Plugin
 
 	static String hello(Shared s)
 	{
+		return hello(s, null);
+	}
+
+	/** The login line, ending with what needs doing before the next trip when there is any. */
+	static String hello(Shared s, String warnings)
+	{
 		StringBuilder sb = new StringBuilder();
 		if (s.focus != null && s.focus.title != null)
 		{
@@ -333,6 +370,10 @@ public class CodexHomePlugin extends Plugin
 			{
 				sb.append(" (").append(Status.signed(s.worth.change)).append(s.worth.days >= 7 ? " this week)" : " in " + Format.plural(s.worth.days, "day", "days") + ")");
 			}
+		}
+		if (warnings != null)
+		{
+			sb.append(sb.length() == 0 ? "" : ". ").append(sb.length() == 0 ? Character.toLowerCase(warnings.charAt(0)) + warnings.substring(1) : warnings);
 		}
 		return sb.length() == 0 ? null : sb.append(".").toString();
 	}

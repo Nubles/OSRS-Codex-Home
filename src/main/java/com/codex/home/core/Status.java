@@ -32,12 +32,39 @@ public final class Status
 			case MONEY_PILOT:
 				return shared.moneyRuns <= 0 ? null : Format.plural(shared.moneyRuns, "run", "runs") + " clocked";
 			case BOSS_PILOT:
-				return shared.boss == null ? null : "Pinned: " + shared.boss;
+				return bossPilot(shared);
+			case MINIGAME_PILOT:
+				return minigames(shared);
 			case NOMAD:
 				return shared.nomadKinds < 0 ? null : "Tracking " + Format.plural(shared.nomadKinds, "kind", "kinds") + " of item";
 			default:
 				return null;
 		}
+	}
+
+	static String bossPilot(Shared s)
+	{
+		for (Shared.Charge c : s.charges)
+		{
+			if (Watch.low(c))
+			{
+				return (s.boss == null ? "" : s.boss + "; ") + c.name + " running low";
+			}
+		}
+		return s.boss == null ? null : "Pinned: " + s.boss;
+	}
+
+	static String minigames(Shared s)
+	{
+		if (s.storm != null && s.storm.won)
+		{
+			return "Tempoross: " + Format.plural(s.storm.permits, "permit", "permits") + " last game";
+		}
+		if (s.rift != null)
+		{
+			return "Rift: " + Format.plural(s.rift.searches(), "search", "searches") + " banked";
+		}
+		return s.storm != null ? "Tempoross: washed away last game" : null;
 	}
 
 	static String focus(Shared.Focus f)

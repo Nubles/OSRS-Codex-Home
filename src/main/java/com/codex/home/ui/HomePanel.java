@@ -7,6 +7,7 @@ import com.codex.home.core.Link;
 import com.codex.home.core.Roster;
 import com.codex.home.core.Shared;
 import com.codex.home.core.Status;
+import com.codex.home.core.Watch;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -159,6 +160,20 @@ public class HomePanel extends PluginPanel
 				list.add(plan);
 				list.space(2);
 			}
+			if (!view.watch.isEmpty())
+			{
+				int todo = 0;
+				for (Watch.Item item : view.watch)
+				{
+					todo += item.tone != Watch.Tone.STEADY ? 1 : 0;
+				}
+				list.add(new SectionHeader("On watch", todo == 0 ? "all calm" : todo + " to see to"));
+				for (Watch.Item item : view.watch)
+				{
+					list.add(watchRow(item));
+				}
+				list.space(2);
+			}
 			list.add(new SectionHeader("Up next", s.focus != null && s.focus.title != null && s.focus.hoursLeft >= 0
 				? "~" + hours(s.focus.hoursLeft) : null));
 			list.add(focusCard());
@@ -222,11 +237,99 @@ public class HomePanel extends PluginPanel
 		{
 			list.add(planRow(i + 1, s.plan.get(i)));
 		}
+		int more = moreReady(s.plan);
+		if (more > 0)
+		{
+			list.add(Ui.wrapped("+ " + more + " more ready in Autopilot", Theme.small(), Theme.GREEN, TEXT + 14));
+		}
 		if (!s.fedBy.isEmpty())
 		{
 			list.add(Ui.wrapped("Fed by " + String.join(", ", s.fedBy), Theme.small(), Theme.GOLD_DIM, TEXT + 14));
 		}
 		return null;
+	}
+
+	/** Steps past the ones shown that are ready now or going to waste, as a dailies list counts them. */
+	static int moreReady(List<Shared.Step> plan)
+	{
+		int n = 0;
+		for (int i = PLAN_STEPS; i < plan.size(); i++)
+		{
+			String t = plan.get(i).tier;
+			n += "READY".equals(t) || "WASTING".equals(t) ? 1 : 0;
+		}
+		return n;
+	}
+
+	static Color tone(Watch.Tone tone)
+	{
+		switch (tone)
+		{
+			case ALERT:
+				return Theme.EMBER;
+			case READY:
+				return Theme.GREEN;
+			default:
+				return Theme.TEAL;
+		}
+	}
+
+	private JComponent watchRow(Watch.Item item)
+	{
+		Color tint = tone(item.tone);
+		Card card = new Card(new BorderLayout(0, 3)).accent(tint).highlighted(item.tone == Watch.Tone.ALERT);
+		card.setBorder(new EmptyBorder(6, 10, 6, 8));
+		card.add(new WatchHead(item, tint), BorderLayout.NORTH);
+		StackPanel body = new StackPanel(2, 0);
+		body.add(Ui.wrapped(item.title, Theme.body(), item.tone == Watch.Tone.ALERT ? Theme.GOLD_BRIGHT : Theme.TEXT, TEXT));
+		if (item.detail != null && !item.detail.isEmpty())
+		{
+			body.add(Ui.wrapped(item.detail, Theme.small(), Theme.TEXT_MUTED, TEXT));
+		}
+		card.add(body, BorderLayout.CENTER);
+		if (item.progress >= 0)
+		{
+			card.add(new Bar(item.progress), BorderLayout.SOUTH);
+		}
+		card.setToolTipText(item.from == null ? "Read from the game" : "From " + item.from.getPluginName());
+		return card;
+	}
+
+	/** A watch row's head: a lamp in its tone, what it is about and the app it comes from. */
+	static final class WatchHead extends JComponent
+	{
+		private final Watch.Item item;
+		private final Color tint;
+
+		WatchHead(Watch.Item item, Color tint)
+		{
+			this.item = item;
+			this.tint = tint;
+			setOpaque(false);
+			setPreferredSize(new Dimension(10, 14));
+		}
+
+		@Override
+		protected void paintComponent(Graphics graphics)
+		{
+			Graphics2D g = (Graphics2D) graphics.create();
+			Theme.smooth(g);
+			int w = getWidth();
+			g.setFont(Theme.small());
+			java.awt.FontMetrics fm = g.getFontMetrics();
+			if (item.tone != Watch.Tone.STEADY)
+			{
+				g.setColor(Theme.alpha(tint, 70));
+				g.fill(new Ellipse2D.Float(0, 2, 10, 10));
+			}
+			g.setColor(tint);
+			g.fill(new Ellipse2D.Float(3, 5, 4, 4));
+			String from = item.from == null ? "game" : item.from.shortName();
+			int fw = fm.stringWidth(from);
+			Ui.shadowed(g, from, w - fw, 11, Theme.TEXT_FAINT);
+			Ui.shadowed(g, Ui.clip(item.label, fm, w - 16 - fw - 6), 15, 11, item.tone == Watch.Tone.STEADY ? Theme.GOLD_DIM : tint);
+			g.dispose();
+		}
 	}
 
 	static Color tier(String tier)
