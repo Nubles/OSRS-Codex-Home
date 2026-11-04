@@ -178,7 +178,8 @@ public class HomeCoreTest
 			"{\"name\":{}}", "{\"items\":{\"1\":\"x\"}}", "{\"total\":1e400}", "{\"progress\":NaN}");
 		String[] keys = {"codexnavigator/goalBoard", "codexledger/ledger", "codexsessionchronicle/journal",
 			"codexbanksteward/bankV1", "codexquartermaster/kitsV1", "codexgearroadmap/goal", "codexgearroadmap/bank",
-			"codexguardian/oneLifeAccount", "codexnomad/holdingsV1"};
+			"codexguardian/oneLifeAccount", "codexnomad/holdingsV1", "codexautopilot/planV1", "codexwayfinder/atlasV1",
+			"codexmoneypilot/runs", "codexbosspilot/pinned"};
 		for (String key : keys)
 		{
 			for (String value : bad)
@@ -302,7 +303,7 @@ public class HomeCoreTest
 			assertTrue(app.getBlurb().endsWith("."));
 		}
 		assertNull(App.byPluginName("Codex Home"));
-		assertEquals(19, App.all().size());
+		assertEquals(22, App.all().size());
 		for (Link link : Link.values())
 		{
 			assertFalse(link + " does not feed itself", link.getTo().contains(link.getFrom()));

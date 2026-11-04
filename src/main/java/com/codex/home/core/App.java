@@ -19,6 +19,8 @@ public enum App
 		"Ranks the gear upgrades worth buying next by damage gained per coin."),
 	LOG_INSIGHT("Codex Log Insight", "codex-log-insight", "LI", Family.PLAN, Hub.LIVE,
 		"Collection log odds, how dry you are and the fastest slots to fill next."),
+	WAYFINDER("Codex Wayfinder", "codex-wayfinder", "WF", Family.PLAN, Hub.SOON,
+		"The fastest way anywhere with the teleports, rings and trees this account has."),
 
 	LEDGER("Codex Ledger", "codex-ledger", "LD", Family.WEALTH, Hub.LIVE,
 		"Your worth across bank, Grand Exchange and storage, day by day."),
@@ -28,6 +30,8 @@ public enum App
 		"Supply kits for your trips: how many you can do and what to restock."),
 	PROVISIONER("Codex Provisioner", "codex-provisioner", "PV", Family.WEALTH, Hub.LIVE,
 		"Walks you through gathering and making a kit's supplies, one step at a time."),
+	MONEY_PILOT("Codex Money Pilot", "codex-money-pilot", "MO", Family.WEALTH, Hub.SOON,
+		"Money makers you can do now, ranked by what they pay you an hour."),
 
 	SESSION_CHRONICLE("Codex Session Chronicle", "codex-session-chronicle", "SC", Family.STORY, Hub.LIVE,
 		"A recap of every session: XP, loot, kills and time, kept as a journal."),
@@ -36,6 +40,8 @@ public enum App
 
 	ROUNDS("Codex Rounds", "codex-rounds", "RD", Family.GUIDES, Hub.LIVE,
 		"A timed round of bird houses, seaweed, special trees, dailies and your kingdom."),
+	BOSS_PILOT("Codex Boss Pilot", "codex-boss-pilot", "BP", Family.GUIDES, Hub.SOON,
+		"The next boss for your account, your best setup from the bank and the kit to take."),
 	MINIGAME_PILOT("Codex Minigame Pilot", "codex-minigame-pilot", "MP", Family.GUIDES, Hub.LIVE,
 		"One next step in skilling minigames, and the points still needed for your reward."),
 	PLUNDER_PILOT("Codex Plunder Pilot", "codex-plunder-pilot", "PL", Family.GUIDES, Hub.LIVE,

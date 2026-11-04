@@ -21,16 +21,25 @@ public enum Link
 		App.AUTOPILOT, App.BANK_STEWARD, App.ANNALS, App.MINIGAME_PILOT, App.PLUNDER_PILOT, App.PEST_CONTROL_PILOT),
 	WORTH(App.LEDGER, Shared.LEDGER, "Your worth over time",
 		"Let Ledger see your bank and Grand Exchange",
-		App.GEAR_ROADMAP, App.SESSION_CHRONICLE, App.ANNALS, App.GUARDIAN),
+		App.GEAR_ROADMAP, App.SESSION_CHRONICLE, App.ANNALS, App.GUARDIAN, App.AUTOPILOT),
 	SESSIONS(App.SESSION_CHRONICLE, Shared.CHRONICLE, "Your play sessions",
 		"Play a session with Chronicle on",
 		App.NAVIGATOR, App.GEAR_ROADMAP, App.LEDGER),
 	KITS(App.QUARTERMASTER, Shared.QUARTERMASTER, "Your supply kits",
 		"Choose a kit in Quartermaster",
-		App.BANK_STEWARD, App.PROVISIONER, App.GUARDIAN, App.NOMAD),
+		App.BANK_STEWARD, App.PROVISIONER, App.GUARDIAN, App.NOMAD, App.AUTOPILOT),
 	GEAR(App.GEAR_ROADMAP, Shared.ROADMAP, "Your gear and saving goal",
 		"Open your bank with Gear Roadmap on",
-		App.QUARTERMASTER, App.BANK_STEWARD, App.PLUNDER_PILOT, App.PEST_CONTROL_PILOT);
+		App.QUARTERMASTER, App.BANK_STEWARD, App.PLUNDER_PILOT, App.PEST_CONTROL_PILOT, App.AUTOPILOT),
+	TRAVEL(App.WAYFINDER, Shared.WAYFINDER, "Your travel atlas",
+		"Log in with Wayfinder on",
+		App.AUTOPILOT),
+	EARNINGS(App.MONEY_PILOT, Shared.MONEY_PILOT, "Your money makers' rates",
+		"Clock a money maker in Money Pilot",
+		App.AUTOPILOT),
+	BOSSES(App.BOSS_PILOT, Shared.BOSS_PILOT, "Your pinned boss and trips",
+		"Pin a boss in Boss Pilot",
+		App.AUTOPILOT);
 
 	/** How a thread stands on this account. */
 	public enum State

@@ -153,6 +153,12 @@ public class HomePanel extends PluginPanel
 		}
 		else
 		{
+			JComponent plan = planSection(list);
+			if (plan != null)
+			{
+				list.add(plan);
+				list.space(2);
+			}
 			list.add(new SectionHeader("Up next", s.focus != null && s.focus.title != null && s.focus.hoursLeft >= 0
 				? "~" + hours(s.focus.hoursLeft) : null));
 			list.add(focusCard());
@@ -181,6 +187,139 @@ public class HomePanel extends PluginPanel
 			}
 		}
 		return list;
+	}
+
+	/** Steps of Autopilot's plan shown on Today. */
+	static final int PLAN_STEPS = 3;
+	/** A plan older than this says when it was saved: Autopilot may be off. */
+	static final long PLAN_STALE_MS = 30 * 60_000L;
+
+	/**
+	 * Codex Autopilot's top steps, as it shared them: adds the header and the rows to the list, and returns
+	 * a note to add after them when there is no plan to show, or null.
+	 */
+	private JComponent planSection(StackPanel list)
+	{
+		Shared s = view.shared;
+		boolean installed = view.roster.installed(App.AUTOPILOT);
+		if (s.plan == null)
+		{
+			if (!installed)
+			{
+				return null;
+			}
+			list.add(new SectionHeader("Today's plan"));
+			return note("Codex Autopilot's next three steps show here once it has planned for this account.");
+		}
+		long age = s.planSavedAt > 0 ? view.now - s.planSavedAt : 0;
+		list.add(new SectionHeader("Today's plan", age > PLAN_STALE_MS ? "saved " + Status.ago(s.planSavedAt, view.now)
+			: "from Autopilot"));
+		if (s.plan.isEmpty())
+		{
+			return note("All caught up: nothing is ready and no goal has a next step.");
+		}
+		for (int i = 0; i < Math.min(PLAN_STEPS, s.plan.size()); i++)
+		{
+			list.add(planRow(i + 1, s.plan.get(i)));
+		}
+		if (!s.fedBy.isEmpty())
+		{
+			list.add(Ui.wrapped("Fed by " + String.join(", ", s.fedBy), Theme.small(), Theme.GOLD_DIM, TEXT + 14));
+		}
+		return null;
+	}
+
+	static Color tier(String tier)
+	{
+		if (tier == null)
+		{
+			return Theme.GOLD_DIM;
+		}
+		switch (tier)
+		{
+			case "WASTING":
+				return Theme.EMBER;
+			case "READY":
+				return Theme.GREEN;
+			case "FOCUS":
+				return Theme.TEAL;
+			default:
+				return Theme.GOLD_DIM;
+		}
+	}
+
+	private JComponent planRow(int place, Shared.Step step)
+	{
+		Color tint = tier(step.tier);
+		Card card = new Card(new BorderLayout(0, 3)).accent(tint).highlighted(place == 1);
+		card.setBorder(new EmptyBorder(6, 10, 6, 8));
+		card.add(new PlanHead(place, step, tint), BorderLayout.NORTH);
+		StackPanel body = new StackPanel(2, 0);
+		body.add(Ui.wrapped(step.title, place == 1 ? Theme.title() : Theme.body(), place == 1 ? Theme.GOLD_BRIGHT : Theme.TEXT, TEXT));
+		if (place == 1 && step.why != null)
+		{
+			body.add(Ui.wrapped(step.why, Theme.small(), Theme.TEXT_MUTED, TEXT));
+		}
+		if (step.travel != null)
+		{
+			body.add(Ui.wrapped(step.travel, Theme.small(), Theme.TEAL, TEXT));
+		}
+		card.add(body, BorderLayout.CENTER);
+		card.setToolTipText("From Codex Autopilot's plan");
+		return card;
+	}
+
+	/** A plan row's head: its place in a ring, what kind of step and how long. */
+	static final class PlanHead extends JComponent
+	{
+		private final int place;
+		private final Shared.Step step;
+		private final Color tint;
+
+		PlanHead(int place, Shared.Step step, Color tint)
+		{
+			this.place = place;
+			this.step = step;
+			this.tint = tint;
+			setOpaque(false);
+			setPreferredSize(new Dimension(10, 18));
+		}
+
+		@Override
+		protected void paintComponent(Graphics graphics)
+		{
+			Graphics2D g = (Graphics2D) graphics.create();
+			Theme.smooth(g);
+			int w = getWidth();
+			g.setFont(Theme.small());
+			java.awt.FontMetrics fm = g.getFontMetrics();
+			g.setColor(Theme.INK_DEEP);
+			g.fill(new Ellipse2D.Float(0, 1, 15, 15));
+			g.setColor(Theme.alpha(tint, 190));
+			g.draw(new Ellipse2D.Float(0.5f, 1.5f, 14, 14));
+			String n = String.valueOf(place);
+			Ui.shadowed(g, n, 8 - fm.stringWidth(n) / 2, 13, Theme.GOLD_BRIGHT);
+			String time = step.minutes <= 0 ? "" : step.minutes >= 60 ? "~1 hr" : "~" + step.minutes + " min";
+			int tw = fm.stringWidth(time);
+			Ui.shadowed(g, time, w - tw, 13, Theme.TEXT_FAINT);
+			String over = step.over == null ? "" : step.over.toUpperCase();
+			Ui.shadowed(g, clip(over, fm, w - 22 - tw - 6), 22, 13, Theme.GOLD_DIM);
+			g.dispose();
+		}
+
+		private static String clip(String text, java.awt.FontMetrics fm, int width)
+		{
+			if (fm.stringWidth(text) <= width)
+			{
+				return text;
+			}
+			String t = text;
+			while (t.length() > 1 && fm.stringWidth(t + "...") > width)
+			{
+				t = t.substring(0, t.length() - 1);
+			}
+			return t + "...";
+		}
 	}
 
 	private JComponent focusCard()
