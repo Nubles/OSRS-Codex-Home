@@ -25,5 +25,9 @@ At login Home can put one line in the chat box, such as `Codex: next, Start Shie
 ## What it does not do
 Home only reads. It reads the data the other Codex apps already save for each other in your RuneLite profile, and RuneLite's own list of installed plugins. It never changes another plugin's settings, never switches plugins on or off, never clicks or changes menus, and sends nothing off your computer. The only thing it saves is the tab you last had open.
 
+## Field notes
+
+An optional setting, **Keep field notes** (under Field notes, off by default), writes a plain record of what Codex Home reads and decides to its own folder in `.runelite/plugin-data` on your computer, one line at a time. It is for checking the plugin's guesses against real play: when something looks wrong, the notes show what it saw and why it chose what it did. Other players' chat is never written down, it stays on your computer, and nothing is sent anywhere.
+
 ## Licence
 BSD 2-Clause.

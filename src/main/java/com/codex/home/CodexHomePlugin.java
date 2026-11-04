@@ -1,5 +1,6 @@
 package com.codex.home;
 
+import com.codex.home.notes.FieldNotes;
 import com.codex.home.core.Account;
 import com.codex.home.core.Advice;
 import com.codex.home.core.App;
@@ -96,6 +97,9 @@ public class CodexHomePlugin extends Plugin
 	@Inject
 	private CodexHomeConfig config;
 
+	/** The optional local record of what the plugin read and decided. */
+	private FieldNotes notes;
+
 	private HomePanel panel;
 	private NavigationButton navButton;
 	private ScheduledFuture<?> clock;
@@ -113,6 +117,11 @@ public class CodexHomePlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		notes = new FieldNotes(this::getPluginDirectory, gson);
+		if (config.fieldNotes())
+		{
+			notes.open();
+		}
 		panel = new HomePanel(new PanelActions());
 		panel.show(rememberedTab());
 		navButton = NavigationButton.builder()
@@ -133,6 +142,11 @@ public class CodexHomePlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		if (notes != null)
+		{
+			notes.shutdown();
+			notes = null;
+		}
 		if (clock != null)
 		{
 			clock.cancel(false);
@@ -199,6 +213,18 @@ public class CodexHomePlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
+		if (CodexHomeConfig.GROUP.equals(event.getGroup()) && "fieldNotes".equals(event.getKey()) && notes != null)
+		{
+			if (config.fieldNotes())
+			{
+				notes.open();
+			}
+			else
+			{
+				notes.close();
+			}
+			return;
+		}
 		String group = event.getGroup();
 		if (CodexHomeConfig.GROUP.equals(group) && CodexHomeConfig.TAB_KEY.equals(event.getKey()))
 		{
@@ -281,6 +307,13 @@ public class CodexHomePlugin extends Plugin
 				return;
 			}
 			View view = view();
+			if (notes != null && notes.isOpen())
+			{
+				// What Home read from the other apps, so a wrong status or tile can be traced.
+				com.google.gson.JsonObject n = new com.google.gson.JsonObject();
+				n.add("view", notes.safe(view));
+				notes.noteChanged("view", n);
+			}
 			SwingUtilities.invokeLater(() -> p.update(view));
 		});
 	}
