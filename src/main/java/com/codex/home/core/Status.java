@@ -25,6 +25,14 @@ public final class Status
 				return shared.gearGoal == null ? null : "Saving for " + shared.gearGoal;
 			case GUARDIAN:
 				return shared.oneLife ? "Guarding a one-life account" : null;
+			case AUTOPILOT:
+				return shared.plan == null || shared.plan.isEmpty() ? null : "Next: " + shared.plan.get(0).headline();
+			case WAYFINDER:
+				return shared.teleports < 0 ? null : Format.plural(shared.teleports, "teleport", "teleports") + " in your atlas";
+			case MONEY_PILOT:
+				return shared.moneyRuns <= 0 ? null : Format.plural(shared.moneyRuns, "run", "runs") + " clocked";
+			case BOSS_PILOT:
+				return shared.boss == null ? null : "Pinned: " + shared.boss;
 			case NOMAD:
 				return shared.nomadKinds < 0 ? null : "Tracking " + Format.plural(shared.nomadKinds, "kind", "kinds") + " of item";
 			default:

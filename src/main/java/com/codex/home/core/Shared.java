@@ -23,6 +23,10 @@ public final class Shared
 	public static final String ROADMAP = "codexgearroadmap";
 	public static final String GUARDIAN = "codexguardian";
 	public static final String NOMAD = "codexnomad";
+	public static final String AUTOPILOT = "codexautopilot";
+	public static final String WAYFINDER = "codexwayfinder";
+	public static final String MONEY_PILOT = "codexmoneypilot";
+	public static final String BOSS_PILOT = "codexbosspilot";
 
 	static final long DAY_MS = 24L * 60 * 60 * 1000;
 	static final long WEEK_MS = 7 * DAY_MS;
@@ -128,6 +132,42 @@ public final class Shared
 		}
 	}
 
+	/**
+	 * One of Codex Autopilot's top steps, from {@code codexautopilot/planV1}:
+	 * {@code {"version":1,"savedAt":ms,"steps":[{"key","kind","tier","over","title","why","minutes","travel","itemId"}],"fedBy":[...]}}.
+	 */
+	public static final class Step
+	{
+		public final String key;
+		/** WASTING, READY, FOCUS or GOAL. */
+		public final String tier;
+		/** The small line above, such as "Herb run" or "Toward Twisted bow". */
+		public final String over;
+		public final String title;
+		public final String why;
+		/** Minutes, the journey there included, or 0 when not given. */
+		public final int minutes;
+		/** How to get there, such as "via Ardougne cloak, ~40s", or null. */
+		public final String travel;
+
+		Step(String key, String tier, String over, String title, String why, int minutes, String travel)
+		{
+			this.key = key;
+			this.tier = tier;
+			this.over = over;
+			this.title = title;
+			this.why = why;
+			this.minutes = minutes;
+			this.travel = travel;
+		}
+
+		/** "Herb run: 4 ready". */
+		public String headline()
+		{
+			return over == null ? title : over + ": " + title;
+		}
+	}
+
 	public final Focus focus;
 	public final Worth worth;
 	public final Session session;
@@ -140,9 +180,28 @@ public final class Shared
 	public final boolean oneLife;
 	/** How many kinds of item Nomad tracks across an Ultimate Ironman's stores, or -1. */
 	public final int nomadKinds;
+	/** Codex Autopilot's top steps, best first, or null when it has shared none. */
+	public final java.util.List<Step> plan;
+	/** When Autopilot saved them, or 0. */
+	public final long planSavedAt;
+	/** The Codex apps whose data is in Autopilot's plan. */
+	public final java.util.List<String> fedBy;
+	/** Teleports in Codex Wayfinder's shared atlas, or -1 when it has shared none. */
+	public final int teleports;
+	/** Money making runs Codex Money Pilot has clocked, or -1 when there are none to read. */
+	public final int moneyRuns;
+	/** The boss pinned in Codex Boss Pilot, by name, or null. */
+	public final String boss;
 
 	private Shared(Focus focus, Worth worth, Session session, Bank bank, Kit kit, String gearGoal, boolean gearBank, boolean oneLife,
 		int nomadKinds)
+	{
+		this(focus, worth, session, bank, kit, gearGoal, gearBank, oneLife, nomadKinds, null, 0, java.util.Collections.emptyList(), -1, -1,
+			null);
+	}
+
+	private Shared(Focus focus, Worth worth, Session session, Bank bank, Kit kit, String gearGoal, boolean gearBank, boolean oneLife,
+		int nomadKinds, java.util.List<Step> plan, long planSavedAt, java.util.List<String> fedBy, int teleports, int moneyRuns, String boss)
 	{
 		this.focus = focus;
 		this.worth = worth;
@@ -153,12 +212,19 @@ public final class Shared
 		this.gearBank = gearBank;
 		this.oneLife = oneLife;
 		this.nomadKinds = nomadKinds;
+		this.plan = plan;
+		this.planSavedAt = planSavedAt;
+		this.fedBy = fedBy;
+		this.teleports = teleports;
+		this.moneyRuns = moneyRuns;
+		this.boss = boss;
 	}
 
 	public static final Shared NONE = new Shared(null, null, null, null, null, null, false, false, -1);
 
 	public static Shared read(Source source, Gson gson, long now)
 	{
+		JsonObject plan = planObject(parse(gson, source.get(AUTOPILOT, "planV1")));
 		return new Shared(
 			focus(parse(gson, source.get(NAVIGATOR, "goalBoard"))),
 			worth(parse(gson, source.get(LEDGER, "ledger")), now),
@@ -168,7 +234,13 @@ public final class Shared
 			gearGoal(parse(gson, source.get(ROADMAP, "goal"))),
 			gearBank(parse(gson, source.get(ROADMAP, "bank"))),
 			"true".equals(source.get(GUARDIAN, "oneLifeAccount")),
-			nomad(parse(gson, source.get(NOMAD, "holdingsV1"))));
+			nomad(parse(gson, source.get(NOMAD, "holdingsV1"))),
+			plan(plan),
+			plan == null ? 0 : (long) num(plan, "savedAt", 0),
+			fedBy(plan),
+			teleports(parse(gson, source.get(WAYFINDER, "atlasV1"))),
+			runs(parse(gson, source.get(MONEY_PILOT, "runs"))),
+			boss(source.get(BOSS_PILOT, "pinned")));
 	}
 
 	/** Whether the app that publishes a group has shared anything Home could read. */
@@ -193,6 +265,14 @@ public final class Shared
 				return oneLife;
 			case NOMAD:
 				return nomadKinds >= 0;
+			case AUTOPILOT:
+				return plan != null;
+			case WAYFINDER:
+				return teleports >= 0;
+			case MONEY_PILOT:
+				return moneyRuns > 0;
+			case BOSS_PILOT:
+				return boss != null;
 			default:
 				return false;
 		}
@@ -428,6 +508,101 @@ public final class Shared
 	{
 		JsonObject o = object(e);
 		return o != null && array(o, "items") != null;
+	}
+
+	/** Autopilot's shared plan, or null when it is missing or a version this reader does not know. */
+	static JsonObject planObject(JsonElement e)
+	{
+		JsonObject o = object(e);
+		return o == null || num(o, "version", 1) != 1 || array(o, "steps") == null ? null : o;
+	}
+
+	/** Autopilot's steps, best first; null without a readable plan. A step without a title is left out. */
+	static java.util.List<Step> plan(JsonObject o)
+	{
+		if (o == null)
+		{
+			return null;
+		}
+		java.util.List<Step> out = new java.util.ArrayList<>();
+		for (JsonElement e : array(o, "steps"))
+		{
+			JsonObject s = object(e);
+			if (s == null || str(s, "title") == null)
+			{
+				continue;
+			}
+			double minutes = num(s, "minutes", 0);
+			out.add(new Step(str(s, "key"), str(s, "tier"), str(s, "over"), str(s, "title"), str(s, "why"),
+				(int) Math.max(0, Math.min(10_000, Double.isFinite(minutes) ? minutes : 0)), str(s, "travel")));
+		}
+		return out;
+	}
+
+	static java.util.List<String> fedBy(JsonObject o)
+	{
+		java.util.List<String> out = new java.util.ArrayList<>();
+		JsonArray a = o == null ? null : array(o, "fedBy");
+		if (a != null)
+		{
+			for (JsonElement e : a)
+			{
+				if (e != null && e.isJsonPrimitive() && e.getAsJsonPrimitive().isString() && !e.getAsString().isEmpty())
+				{
+					out.add(e.getAsString());
+				}
+			}
+		}
+		return out;
+	}
+
+	/** Teleports in Wayfinder's atlas ({@code codexwayfinder/atlasV1}), or -1. */
+	static int teleports(JsonElement e)
+	{
+		JsonObject o = object(e);
+		JsonArray t = o == null || num(o, "version", 1) != 1 ? null : array(o, "teleports");
+		return t == null ? -1 : t.size();
+	}
+
+	/** Runs in Money Pilot's list ({@code codexmoneypilot/runs}), or -1 when it is not a list. */
+	static int runs(JsonElement e)
+	{
+		return e != null && e.isJsonArray() ? e.getAsJsonArray().size() : -1;
+	}
+
+	/** The boss pinned in Boss Pilot ({@code codexbosspilot/pinned}, its key as plain text), named for show. */
+	static String boss(String key)
+	{
+		if (key == null || key.trim().isEmpty())
+		{
+			return null;
+		}
+		String k = key.trim();
+		switch (k)
+		{
+			case "mole":
+				return "Giant Mole";
+			case "kq":
+				return "Kalphite Queen";
+			case "kbd":
+				return "King Black Dragon";
+			case "dks":
+				return "Dagannoth Kings";
+			case "thermy":
+				return "Thermonuclear smoke devil";
+			case "gg":
+				return "Grotesque Guardians";
+			case "graardor":
+				return "General Graardor";
+			case "zilyana":
+				return "Commander Zilyana";
+			case "kreearra":
+				return "Kree'arra";
+			case "kril":
+				return "K'ril Tsutsaroth";
+			default:
+				return Character.toUpperCase(k.charAt(0)) + k.substring(1);
+		}
 	}
 
 	static int nomad(JsonElement e)
