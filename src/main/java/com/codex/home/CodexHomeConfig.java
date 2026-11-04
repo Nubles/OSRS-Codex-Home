@@ -44,4 +44,38 @@ public interface CodexHomeConfig extends Config
 	{
 		return true;
 	}
+
+	@ConfigItem(
+		keyName = "watch",
+		name = "On watch",
+		description = "Show the On watch list on the Today tab: charged items running low (Boss Pilot), your Hunter rumour (Autopilot),"
+			+ " Tempoross and Guardians of the Rift (Minigame Pilot) and your Sailing",
+		position = 3
+	)
+	default boolean watch()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "sailing",
+		name = "Sailing progress",
+		description = "Show your Sailing level, the experience to the next and your port tasks on the On watch list",
+		position = 4
+	)
+	default boolean sailing()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "watchLogin",
+		name = "Warnings at login",
+		description = "Add what needs doing (a charged item running low, a rumour part to hand in) to the login summary",
+		position = 5
+	)
+	default boolean watchLogin()
+	{
+		return true;
+	}
 }

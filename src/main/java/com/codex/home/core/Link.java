@@ -33,7 +33,7 @@ public enum Link
 		App.QUARTERMASTER, App.BANK_STEWARD, App.PLUNDER_PILOT, App.PEST_CONTROL_PILOT, App.AUTOPILOT),
 	TRAVEL(App.WAYFINDER, Shared.WAYFINDER, "Your travel atlas",
 		"Log in with Wayfinder on",
-		App.AUTOPILOT),
+		App.AUTOPILOT, App.NOMAD, App.IRONWORKS, App.PROVISIONER),
 	EARNINGS(App.MONEY_PILOT, Shared.MONEY_PILOT, "Your money makers' rates",
 		"Clock a money maker in Money Pilot",
 		App.AUTOPILOT),
