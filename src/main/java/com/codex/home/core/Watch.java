@@ -238,7 +238,7 @@ public final class Watch
 		out.add(new Item("sailing", null, "SAILING", title, d.toString(), Tone.STEADY, s.progress()));
 	}
 
-	/** The one line for the chat at login about what needs doing, or null. */
+	/** What needs doing before the next trip, as one line, or null. */
 	public static String reminder(List<Item> items)
 	{
 		List<String> parts = new ArrayList<>();
