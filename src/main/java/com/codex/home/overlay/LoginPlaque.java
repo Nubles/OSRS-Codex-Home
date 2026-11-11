@@ -81,8 +81,24 @@ public class LoginPlaque extends Overlay
 		return d;
 	}
 
-	/** Draws the plaque at the origin and answers its size; also used for screenshots. */
-	public static Dimension paint(Graphics2D g, Greeting greeting)
+	/**
+	 * Draws the plaque at the origin and answers its size; also used for screenshots. It draws on a
+	 * copy of the graphics, so the caller's clip, font, paint and hints are left as they were.
+	 */
+	public static Dimension paint(Graphics2D graphics, Greeting greeting)
+	{
+		Graphics2D g = (Graphics2D) graphics.create();
+		try
+		{
+			return draw(g, greeting);
+		}
+		finally
+		{
+			g.dispose();
+		}
+	}
+
+	private static Dimension draw(Graphics2D g, Greeting greeting)
 	{
 		Theme.smooth(g);
 		g.setFont(Theme.title());
@@ -113,10 +129,12 @@ public class LoginPlaque extends Overlay
 		Shape shape = new RoundRectangle2D.Float(0.5f, 0.5f, width - 1, height - 1, 10, 10);
 		g.setPaint(new GradientPaint(0, 0, Theme.alpha(Theme.CARD_TOP, 238), 0, height, Theme.alpha(Theme.INK_DEEP, 238)));
 		g.fill(shape);
-		g.setClip(shape);
+		// Narrow the clip to the plaque and put the old one back after: never clear it.
+		Shape old = g.getClip();
+		g.clip(shape);
 		g.setPaint(new GradientPaint(0, 0, Theme.GOLD, 0, height, Theme.alpha(Theme.GOLD, 70)));
 		g.fillRect(0, 0, 3, height);
-		g.setClip(null);
+		g.setClip(old);
 		g.setColor(Theme.alpha(Theme.GOLD, 150));
 		g.draw(shape);
 		g.setColor(Theme.alpha(Color.WHITE, 14));
