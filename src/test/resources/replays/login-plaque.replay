@@ -1,0 +1,22 @@
+# Home greets at login with a plaque over the game, never with a chat line: the plaque carries the
+# next step from Navigator's board and the worth from Ledger, and goes when the player logs out.
+# Nothing here is a game fact; the saved values are the shapes Navigator and Ledger write (Gson reads
+# them leniently, so the script leaves out the quotes).
+
+scene 3200 3200
+at 3222 3218
+saved-in codexnavigator goalBoard "{version:1,focus:'quest:ds2',goals:[{key:'quest:ds2',title:'Dragon Slayer II',complete:false,progress:0.4,next:'Start Shield of Arrav',hoursLeft:12}]}"
+saved-in codexledger ledger "{total:48250000,history:[]}"
+watch plaque plaque.shown
+# RuneLite starts at the login screen.
+state LOGIN_SCREEN
+tick 1
+login
+tick 2
+expect plaque = null
+tick 10
+expect plaque ~ "Start Shield of Arrav"
+expect plaque ~ "Worth 48.2M"
+state LOGIN_SCREEN
+tick 1
+expect plaque = null

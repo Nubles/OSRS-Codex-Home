@@ -14,8 +14,9 @@ public interface CodexHomeConfig extends Config
 
 	@ConfigItem(
 		keyName = "loginLine",
-		name = "Login summary",
-		description = "At login, put one line in the chat box with your next step and your worth",
+		name = "Login plaque",
+		description = "At login, show a small plaque over the game for a few seconds with your next step and your worth."
+			+ " Home never writes in the chat box",
 		position = 0
 	)
 	default boolean loginLine()
@@ -71,7 +72,7 @@ public interface CodexHomeConfig extends Config
 	@ConfigItem(
 		keyName = "watchLogin",
 		name = "Warnings at login",
-		description = "Add what needs doing (a charged item running low, a rumour part to hand in) to the login summary",
+		description = "Add what needs doing (a charged item running low, a rumour part to hand in) to the login plaque",
 		position = 5
 	)
 	default boolean watchLogin()

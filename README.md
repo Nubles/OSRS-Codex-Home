@@ -20,11 +20,11 @@ Every Codex app by family (Plan, Wealth & bank, Story, Guides, Account types), C
 ## Links
 Codex apps share what they learn with each other. Links shows each thread (your bank, goals, worth, sessions, supply kits, gear, and the travel atlas, money makers' rates and pinned boss that Codex Autopilot plans with), whether it is flowing on this account, and which of your apps use it. Wayfinder's travel atlas also feeds Codex Nomad, Ironworks and Provisioner, which draw its routes.
 
-## A login line
-At login Home can put one line in the chat box, such as `Codex: next, Start Shield of Arrav (Dragon Slayer II). Worth 48.2M (+4.1M this week).` When something needs doing before your next trip (a charged item running low, a rumour part to hand in) the line ends with it. Turn either off in the settings.
+## A login plaque
+At login Home shows a small plaque over the game for a few seconds: your next step in gilt letters (Start Shield of Arrav, towards Dragon Slayer II), your worth and how it moved this week, and anything that needs doing before your next trip in ember (a charged item running low, a rumour part to hand in). It fades by itself; right-click it and choose Dismiss to clear it at once. Home never writes in the chat box. Turn the plaque or its warnings off in the settings.
 
 ## What it does not do
-Home only reads. It reads the data the other Codex apps already save for each other in your RuneLite profile, and RuneLite's own list of installed plugins. It never changes another plugin's settings, never switches plugins on or off, never clicks or changes menus, and sends nothing off your computer. The only thing it saves is the tab you last had open.
+Home only reads. It reads the data the other Codex apps already save for each other in your RuneLite profile, and RuneLite's own list of installed plugins. It never changes another plugin's settings, never switches plugins on or off, never clicks or changes menus, never writes in the game's chat box, and sends nothing off your computer. The only thing it saves is the tab you last had open.
 
 ## Licence
 BSD 2-Clause.

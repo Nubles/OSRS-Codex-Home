@@ -3,12 +3,12 @@ package com.codex.home;
 import com.codex.home.core.Account;
 import com.codex.home.core.Advice;
 import com.codex.home.core.App;
-import com.codex.home.core.Format;
+import com.codex.home.core.Greeting;
 import com.codex.home.core.Roster;
 import com.codex.home.core.Sailing;
 import com.codex.home.core.Shared;
-import com.codex.home.core.Status;
 import com.codex.home.core.Watch;
+import com.codex.home.overlay.LoginPlaque;
 import com.codex.home.ui.Actions;
 import com.codex.home.ui.HomePanel;
 import com.codex.home.ui.Sigil;
@@ -16,7 +16,6 @@ import com.codex.home.ui.Tab;
 import com.codex.home.ui.View;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
-import java.awt.Color;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -26,7 +25,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.swing.SwingUtilities;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Skill;
@@ -35,14 +33,11 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.chat.ChatColorType;
-import net.runelite.client.chat.ChatMessageBuilder;
-import net.runelite.client.chat.ChatMessageManager;
-import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.ExternalPluginsChanged;
+import net.runelite.client.events.OverlayMenuClicked;
 import net.runelite.client.events.PluginChanged;
 import net.runelite.client.events.RuneScapeProfileChanged;
 import net.runelite.client.plugins.Plugin;
@@ -50,6 +45,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.LinkBrowser;
 
 /**
@@ -68,8 +64,10 @@ public class CodexHomePlugin extends Plugin
 {
 	private static final String HUB_PAGE = "https://runelite.net/plugin-hub/show/";
 	private static final String BUILD_PAGE = "https://github.com/Nubles/OSRS-";
-	/** Ticks after login before the summary line, so the other apps have read the account first. */
+	/** Ticks after login before the login plaque, so the other apps have read the account first. */
 	private static final int LOGIN_LINE_TICKS = 8;
+	/** How long the login plaque stays up. */
+	static final long PLAQUE_MS = 15_000;
 	/** How often the "ago" times are brought up to date while the panel is open. */
 	private static final long CLOCK_SECONDS = 60;
 
@@ -89,7 +87,7 @@ public class CodexHomePlugin extends Plugin
 	private PluginManager pluginManager;
 
 	@Inject
-	private ChatMessageManager chatMessageManager;
+	private OverlayManager overlayManager;
 
 	@Inject
 	private ScheduledExecutorService executor;
@@ -101,6 +99,7 @@ public class CodexHomePlugin extends Plugin
 	private CodexHomeConfig config;
 
 	private HomePanel panel;
+	private final LoginPlaque plaque = new LoginPlaque();
 	private NavigationButton navButton;
 	private ScheduledFuture<?> clock;
 
@@ -128,6 +127,7 @@ public class CodexHomePlugin extends Plugin
 			.panel(panel)
 			.build();
 		clientToolbar.addNavigation(navButton);
+		overlayManager.add(plaque);
 		clock = executor.scheduleWithFixedDelay(this::refresh, CLOCK_SECONDS, CLOCK_SECONDS, TimeUnit.SECONDS);
 		clientThread.invokeLater(() ->
 		{
@@ -145,6 +145,8 @@ public class CodexHomePlugin extends Plugin
 			clock = null;
 		}
 		clientToolbar.removeNavigation(navButton);
+		overlayManager.remove(plaque);
+		plaque.hide();
 		panel = null;
 		account = Account.UNKNOWN;
 		loggedIn = false;
@@ -172,6 +174,7 @@ public class CodexHomePlugin extends Plugin
 			loginTicks = -1;
 			account = Account.UNKNOWN;
 			sailing = null;
+			plaque.hide();
 			refresh();
 		}
 	}
@@ -197,7 +200,7 @@ public class CodexHomePlugin extends Plugin
 			loginTicks = -1;
 			if (config.loginLine())
 			{
-				executor.execute(this::sayHello);
+				executor.execute(this::greet);
 			}
 		}
 	}
@@ -221,6 +224,15 @@ public class CodexHomePlugin extends Plugin
 		if (group.startsWith("codex") || "runelite".equals(group))
 		{
 			refresh();
+		}
+	}
+
+	@Subscribe
+	public void onOverlayMenuClicked(OverlayMenuClicked event)
+	{
+		if (event.getOverlay() == plaque && LoginPlaque.DISMISS.equals(event.getEntry().getOption()))
+		{
+			plaque.hide();
 		}
 	}
 
@@ -326,56 +338,19 @@ public class CodexHomePlugin extends Plugin
 		return new View(loggedIn, acct, roster, shared, steps, picks, config.startHere(), now, watch);
 	}
 
-	/** The one line at login: the next step and how worth moved, from what the other apps share. */
-	private void sayHello()
+	/**
+	 * The plaque at login: the next step, how worth moved and what needs doing before the next trip,
+	 * drawn over the game for a few seconds. Home never writes in the chat box.
+	 */
+	private void greet()
 	{
 		Shared s = shared();
-		String line = hello(s, config.watchLogin() ? Watch.reminder(Watch.of(s, null, System.currentTimeMillis())) : null);
-		if (line == null)
+		List<Watch.Item> watch = config.watchLogin() ? Watch.of(s, null, System.currentTimeMillis()) : null;
+		Greeting greeting = Greeting.of(s, watch);
+		if (greeting != null)
 		{
-			return;
+			plaque.show(greeting, System.currentTimeMillis() + PLAQUE_MS);
 		}
-		String message = new ChatMessageBuilder()
-			.append(new Color(214, 178, 106), "Codex: ")
-			.append(ChatColorType.NORMAL)
-			.append(line)
-			.build();
-		chatMessageManager.queue(QueuedMessage.builder()
-			.type(ChatMessageType.GAMEMESSAGE)
-			.runeLiteFormattedMessage(message)
-			.build());
-	}
-
-	static String hello(Shared s)
-	{
-		return hello(s, null);
-	}
-
-	/** The login line, ending with what needs doing before the next trip when there is any. */
-	static String hello(Shared s, String warnings)
-	{
-		StringBuilder sb = new StringBuilder();
-		if (s.focus != null && s.focus.title != null)
-		{
-			sb.append("next, ").append(s.focus.next != null ? s.focus.next + " (" + s.focus.title + ")" : s.focus.title);
-		}
-		if (s.worth != null)
-		{
-			if (sb.length() > 0)
-			{
-				sb.append(". ");
-			}
-			sb.append(sb.length() == 0 ? "worth " : "Worth ").append(Format.number(s.worth.total));
-			if (s.worth.days > 0 && s.worth.change != 0)
-			{
-				sb.append(" (").append(Status.signed(s.worth.change)).append(s.worth.days >= 7 ? " this week)" : " in " + Format.plural(s.worth.days, "day", "days") + ")");
-			}
-		}
-		if (warnings != null)
-		{
-			sb.append(sb.length() == 0 ? "" : ". ").append(sb.length() == 0 ? Character.toLowerCase(warnings.charAt(0)) + warnings.substring(1) : warnings);
-		}
-		return sb.length() == 0 ? null : sb.append(".").toString();
 	}
 
 	private Tab rememberedTab()
